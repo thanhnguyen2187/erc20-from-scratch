@@ -4,11 +4,11 @@ pragma solidity ^0.8.13;
 import {Test, console2} from "forge-std/Test.sol";
 import {ERC20FromScratch} from "../src/ERC20FromScratch.sol";
 
-contract CounterTest is Test {
+contract ERC20FromScratchTest is Test {
     ERC20FromScratch public token;
     string public tokenName;
     string public tokenSymbol;
-    address public owner;
+    address public deployer;
     address public dummy;
     address public zero;
 
@@ -16,7 +16,7 @@ contract CounterTest is Test {
         tokenName = "Thanh's Test Token";
         tokenSymbol = "TTT";
         token = new ERC20FromScratch(tokenName, tokenSymbol);
-        owner = msg.sender;
+        deployer = msg.sender;
         dummy = address(2187);
         zero = address(0);
     }
@@ -30,34 +30,64 @@ contract CounterTest is Test {
     }
 
     function test_MintBurn() public {
-        token.mint(owner, 20_000_000);
-        assertEq(token.balanceOf(owner), 20_000_000);
-        token.burn(owner, 20_000_000);
-        assertEq(token.balanceOf(owner), 0);
+        token.mint(deployer, 20_000_000);
+        assertEq(token.balanceOf(deployer), 20_000_000);
+        token.burn(deployer, 20_000_000);
+        assertEq(token.balanceOf(deployer), 0);
     }
 
     function test_Transfer() public {
-        token.mint(owner, 20_000_000);
-        assertEq(token.balanceOf(owner), 20_000_000);
+        // set up
+        token.mint(deployer, 20_000_000);
+        assertEq(token.balanceOf(deployer), 20_000_000);
 
-        vm.prank(owner);
+        // test
+        vm.prank(deployer);
         token.transfer(dummy, 10_000_000);
 
-        assertEq(token.balanceOf(owner), 10_000_000);
+        assertEq(token.balanceOf(deployer), 10_000_000);
         assertEq(token.balanceOf(dummy), 10_000_000);
 
-        token.burn(owner);
+        // clean up
+        token.burn(deployer);
         token.burn(dummy);
+        assertEq(token.balanceOf(deployer), 0);
+        assertEq(token.balanceOf(dummy), 0);
     }
 
     function test_ApproveAllowance() public {
+        // test
         vm.prank(dummy);
-        token.approve(owner, 20_000_000);
+        token.approve(deployer, 20_000_000);
 
-        assertEq(token.allowance(dummy, owner), 20_000_000);
+        assertEq(token.allowance(dummy, deployer), 20_000_000);
 
+        // clean up
         vm.prank(dummy);
-        token.approve(owner, 0);
+        token.approve(deployer, 0);
+
+        assertEq(token.allowance(dummy, deployer), 0);
     }
 
+    function test_TransferFrom_Success() public {
+        // set up
+        token.mint(dummy, 20_000_000);
+
+        // test
+        vm.prank(dummy);
+        token.approve(deployer, 20_000_000);
+        assertEq(token.allowance(dummy, deployer), 20_000_000);
+
+        vm.prank(deployer);
+        token.transferFrom(dummy, deployer, 10_000_000);
+        assertEq(token.balanceOf(deployer), 10_000_000);
+        assertEq(token.allowance(dummy, deployer), 10_000_000);
+
+        // clean up
+        token.burn(dummy);
+
+        vm.prank(dummy);
+        token.approve(deployer, 0);
+        assertEq(token.allowance(dummy, deployer), 0);
+    }
 }
