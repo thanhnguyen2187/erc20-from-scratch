@@ -12,13 +12,16 @@ contract ERC20FromScratchTest is Test {
     address public dummy;
     address public zero;
 
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);
+
     function setUp() public {
         tokenName = "Thanh's Test Token";
         tokenSymbol = "TTT";
-        token = new ERC20FromScratch(tokenName, tokenSymbol);
         deployer = msg.sender;
         dummy = address(2187);
         zero = address(0);
+
+        token = new ERC20FromScratch(tokenName, tokenSymbol);
     }
 
     function test_Name() public {
@@ -30,9 +33,12 @@ contract ERC20FromScratchTest is Test {
     }
 
     function test_MintBurn() public {
+        // test
         token.mint(deployer, 20_000_000);
         assertEq(token.balanceOf(deployer), 20_000_000);
-        token.burn(deployer, 20_000_000);
+
+        // clean up
+        token.burn(deployer);
         assertEq(token.balanceOf(deployer), 0);
     }
 
@@ -89,5 +95,21 @@ contract ERC20FromScratchTest is Test {
         vm.prank(dummy);
         token.approve(deployer, 0);
         assertEq(token.allowance(dummy, deployer), 0);
+    }
+
+    function test_MintBurnEvents() public {
+        // test
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(zero, deployer, 20_000_000);
+
+        token.mint(deployer, 20_000_000);
+        assertEq(token.balanceOf(deployer), 20_000_000);
+
+        // clean up
+        vm.expectEmit(true, true, true, true);
+        emit Transfer(deployer, zero, 20_000_000);
+
+        token.burn(deployer);
+        assertEq(token.balanceOf(deployer), 0);
     }
 }
