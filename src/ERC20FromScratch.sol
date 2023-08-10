@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 import "./IERC20FromScratch.sol";
 
 contract ERC20FromScratch {
-
     string internal _name;
     string internal _symbol;
     mapping(address => uint256) internal _balances;
@@ -11,6 +10,10 @@ contract ERC20FromScratch {
     /// account.
     mapping(address => mapping(address => uint256)) internal _approvals;
     address internal _deployer;
+    address internal _zero = address(0);
+
+    event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
 
     constructor(string memory name_, string memory symbol_) {
         _deployer = msg.sender;
@@ -40,20 +43,26 @@ contract ERC20FromScratch {
         return 30_000_000_000_000_000_000_000_000;
     }
 
-    function balanceOf(address owner_) public view returns (uint256) {
-        return _balances[owner_];
+    function balanceOf(address _owner) public view returns (uint256) {
+        return _balances[_owner];
     }
 
     function mint(address _to, uint256 _value) public ownerOnly {
         _balances[_to] = _value;
+        emit Transfer(_zero, _to, _value);
     }
 
     function burn(address _to) public ownerOnly {
+        uint256 prevBalance = _balances[_to];
         _balances[_to] = 0;
+        emit Transfer(_to, _zero, prevBalance);
     }
 
     function burn(address _to, uint256 _value) public ownerOnly {
+        uint256 prevBalance = _balances[_to];
+        require(_value > prevBalance, "Unable to burn more than the current balance");
         _balances[_to] -= _value;
+        emit Transfer(_to, _zero, prevBalance);
     }
 
     function transfer(address _to, uint256 _value) public returns (bool success) {
@@ -70,6 +79,7 @@ contract ERC20FromScratch {
         _balances[msg.sender] = newFromBalance;
         _balances[_to] = newToBalance;
 
+        emit Transfer(msg.sender, _to, _value);
         success = true;
     }
 
@@ -89,8 +99,9 @@ contract ERC20FromScratch {
 
         _balances[_from] = newFromBalance;
         _balances[_to] = newToBalance;
-        _approvals[_from][msg.sender] = newApprovedValue;
+        _approvals[_from][_to] = newApprovedValue;
 
+        emit Transfer(_from, _to, _value);
         success = true;
     }
 
@@ -98,6 +109,7 @@ contract ERC20FromScratch {
     /// called again it overwrites the current allowance with `_value`.
     function approve(address _spender, uint256 _value) public returns (bool success) {
         _approvals[msg.sender][_spender] = _value;
+        emit Approval(msg.sender, _spender, _value);
         success = true;
     }
 
