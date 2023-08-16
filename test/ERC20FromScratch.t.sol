@@ -13,6 +13,7 @@ contract ERC20FromScratchTest is Test {
     address public zero;
 
     event Transfer(address indexed _from, address indexed _to, uint256 _value);
+    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
 
     function setUp() public {
         tokenName = "Thanh's Test Token";
@@ -111,5 +112,21 @@ contract ERC20FromScratchTest is Test {
 
         token.burn(deployer);
         assertEq(token.balanceOf(deployer), 0);
+    }
+
+    function test_ApproveAllowanceEvents() public {
+        // test
+        vm.expectEmit(true, true, true, true);
+        emit Approval(dummy, deployer, 10_000_000);
+
+        vm.prank(dummy);
+        token.approve(deployer, 10_000_000);
+
+        // clean up
+        vm.expectEmit(true, true, true, true);
+        emit Approval(dummy, deployer, 0);
+
+        vm.prank(dummy);
+        token.approve(deployer, 0);
     }
 }
